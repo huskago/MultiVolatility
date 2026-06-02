@@ -58,7 +58,7 @@ interface DashboardLayoutProps {
     };
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activeTab, onTabChange, onLogout, apiStatus = false }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activeTab, onTabChange, onLogout, apiStatus = false, dockerStats }) => {
     const [open, setOpen] = useState(true);
 
     const toggleDrawer = () => {
