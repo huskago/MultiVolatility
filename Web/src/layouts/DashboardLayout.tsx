@@ -52,13 +52,13 @@ interface DashboardLayoutProps {
     onTabChange: (tab: string) => void;
     onLogout: () => void;
     apiStatus?: boolean;
-    dockerStats?: {
-        max_concurrent_containers?: number;
-        current_containers?: number;
+    activeTasks?: {
+        max_concurrent_tasks?: number;
+        current_tasks?: number;
     };
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activeTab, onTabChange, onLogout, apiStatus = false, dockerStats }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activeTab, onTabChange, onLogout, apiStatus = false, activeTasks }) => {
     const [open, setOpen] = useState(true);
 
     const toggleDrawer = () => {
@@ -134,13 +134,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
                     </div>
                 </div>
 
-                {/* Process Counter */}
-                {dockerStats && (
+                {/* Active Tasks Counter */}
+                {activeTasks && (
                     <div className={`px-4 py-2 transition-all duration-300 ${open ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
                         <div className="flex items-center text-xs font-medium text-slate-500 bg-black/20 rounded-lg p-2 border border-white/5">
                             <div className="w-2 h-2 rounded-full mr-2 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
                             <span className="truncate">
-                                Processes: {dockerStats.current_containers || 0}/{dockerStats.max_concurrent_containers || 8}
+                                Active Tasks: {activeTasks?.current_tasks !== undefined && activeTasks?.max_concurrent_tasks !== undefined 
+                                    ? `${activeTasks.current_tasks}/${activeTasks.max_concurrent_tasks}`
+                                    : 'N/A'}
                             </span>
                         </div>
                     </div>

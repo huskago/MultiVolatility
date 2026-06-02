@@ -28,9 +28,9 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cases, setCases] = useState<Scan[]>([]);
   const [healthStatus, setHealthStatus] = useState(false);
-  const [dockerStats, setDockerStats] = useState<{
-    max_concurrent_containers?: number;
-    current_containers?: number;
+  const [activeTasks, setActiveTasks] = useState<{
+    max_concurrent_tasks?: number;
+    current_tasks?: number;
   }>({});
   const seenModulesRef = useRef<Record<string, Set<string>>>({});
 
@@ -59,24 +59,20 @@ function App() {
         try {
           const statsData = await api.getStats();
           console.log("API stats response:", statsData); // Debug log
-          if (statsData.docker_stats) {
-            setDockerStats({
-              max_concurrent_containers: statsData.docker_stats.max_concurrent_containers || 8, // Default to 8 if undefined
-              current_containers: statsData.docker_stats.current_containers || 0
-            });
-          } else {
-            // Fallback if docker_stats is missing entirely
-            setDockerStats({
-              max_concurrent_containers: 8,
-              current_containers: 0
-            });
-          }
+          // Use processing tasks instead of docker stats
+          const processingTasks = statsData.processing || 0;
+          const maxConcurrentTasks = 8; // Default maximum concurrent tasks
+          
+          setActiveTasks({
+            max_concurrent_tasks: maxConcurrentTasks,
+            current_tasks: processingTasks
+          });
         } catch (e) {
-          console.error("Failed to fetch docker stats", e);
+          console.error("Failed to fetch stats", e);
           // Set default values on error
-          setDockerStats({
-            max_concurrent_containers: 8,
-            current_containers: 0
+          setActiveTasks({
+            max_concurrent_tasks: 8,
+            current_tasks: 0
           });
         }
 
@@ -209,7 +205,7 @@ function App() {
               onTabChange={handleTabChange}
               onLogout={handleLogout}
               apiStatus={healthStatus}
-              dockerStats={dockerStats}
+              activeTasks={activeTasks}
             >
               <Routes>
                 <Route path="dashboard" element={<Dashboard onCaseClick={handleCaseClick} cases={cases} onNavigate={handleTabChange} />} />
