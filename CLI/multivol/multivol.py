@@ -140,23 +140,23 @@ def runner(arguments):
     # For multi-user scenarios, use a more robust context manager
     try:
         with multiprocessing.Pool(processes=max_processes) as pool:
-        if arguments.mode == "vol2":
-            pool.starmap(
-                volatility2_instance.execute_command_volatility2, 
-                [(cmd, 
-                os.path.basename(arguments.dump), 
-                os.path.abspath(arguments.dump), 
-                arguments.profiles_path, 
-                arguments.image, 
-                arguments.profile, 
-                output_dir, # output_dir
-                arguments.format,
-                False, # quiet
-                lock,  # lock
-                arguments.host_path,
-                getattr(arguments, "debug", False)
-                ) for cmd in commands]
-            )
+            if arguments.mode == "vol2":
+                pool.starmap(
+                    volatility2_instance.execute_command_volatility2, 
+                    [(cmd, 
+                        os.path.basename(arguments.dump), 
+                        os.path.abspath(arguments.dump), 
+                        arguments.profiles_path, 
+                        arguments.image, 
+                        arguments.profile, 
+                        output_dir, # output_dir
+                        arguments.format,
+                        False, # quiet
+                        lock,  # lock
+                        arguments.host_path,
+                        getattr(arguments, "debug", False)
+                    ) for cmd in commands]
+                )
             # Vol2 Starmap doesn't use wrapper, so we can't easily report running/completed per module unless we wrap it too.
             # For now we focus on Vol3
             # But we should probably fix Vol2 too.
