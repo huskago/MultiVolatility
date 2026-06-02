@@ -3,6 +3,7 @@ services:
   api:
     build: ./CLI
     container_name: multivol-api
+    restart: unless-stopped
     ports:
       - "5001:5001"
     environment:
@@ -21,6 +22,7 @@ services:
   web:
     build: ./Web
     container_name: multivol-web
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
