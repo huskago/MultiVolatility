@@ -157,21 +157,21 @@ def runner(arguments):
                         getattr(arguments, "debug", False)
                     ) for cmd in commands]
                 )
-            # Vol2 Starmap doesn't use wrapper, so we can't easily report running/completed per module unless we wrap it too.
-            # For now we focus on Vol3
-            # But we should probably fix Vol2 too.
-            # TODO: Add wrapper for Vol2 or update vol2 logic.
-        else:
-
-            # Enforce priority execution for Info module to ensure symbols are downloaded/cached
-            if arguments.windows:
-                info_module = "windows.info.Info"
+                # Vol2 Starmap doesn't use wrapper, so we can't easily report running/completed per module unless we wrap it too.
+                # For now we focus on Vol3
+                # But we should probably fix Vol2 too.
+                # TODO: Add wrapper for Vol2 or update vol2 logic.
             else:
-                info_module = "linux.bash.Bash"
-            if arguments.windows or arguments.linux:
-                if info_module in commands:
-                    commands.remove(info_module)
-                    volatility3_instance.execute_command_volatility3(info_module, 
+
+                # Enforce priority execution for Info module to ensure symbols are downloaded/cached
+                if arguments.windows:
+                    info_module = "windows.info.Info"
+                else:
+                    info_module = "linux.bash.Bash"
+                if arguments.windows or arguments.linux:
+                    if info_module in commands:
+                        commands.remove(info_module)
+                        volatility3_instance.execute_command_volatility3(info_module, 
                                                                     os.path.basename(arguments.dump), 
                                                                     os.path.abspath(arguments.dump), 
                                                                     arguments.symbols_path, 
