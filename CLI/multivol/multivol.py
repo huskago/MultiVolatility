@@ -85,10 +85,13 @@ def runner(arguments):
     max_procs = getattr(arguments, 'processes', None)
     if max_procs is None:
         # Default to CPU count to avoid system thrashing with too many Docker containers
+        # For multi-user scenarios, be more conservative to leave room for other users
         try:
-            max_processes = os.cpu_count() or 4
+            cpu_count = os.cpu_count() or 4
+            # Use 50% of CPU cores for a single scan to allow multiple concurrent scans
+            max_processes = max(2, cpu_count // 2)  # Minimum 2 processes, up to half CPU cores
         except:
-            max_processes = 4
+            max_processes = 2  # Conservative default for multi-user scenarios
     else:
         max_processes = min(max_procs, len(commands))
     start_time = time.time()
@@ -134,7 +137,9 @@ def runner(arguments):
     lock = manager.Lock()
     
     # Use multiprocessing to run commands in parallel
-    with multiprocessing.Pool(processes=max_processes) as pool:
+    # For multi-user scenarios, use a more robust context manager
+    try:
+        with multiprocessing.Pool(processes=max_processes) as pool:
         if arguments.mode == "vol2":
             pool.starmap(
                 volatility2_instance.execute_command_volatility2, 
@@ -251,6 +256,46 @@ def runner(arguments):
                 console.print("\n[bold red]Failed Modules:[/bold red]")
                 for mod in failed_modules:
                     console.print(f"  - [red]{mod}[/red]")
+    except Exception as e:
+        console.print(f"\n[bold red]Error during parallel execution: {e}[/bold red]")
+        # Fallback to sequential execution if parallel fails
+        console.print("[bold yellow]Falling back to sequential execution...[/bold yellow]")
+        if arguments.mode == "vol2":
+            for cmd in commands:
+                volatility2_instance.execute_command_volatility2(
+                    cmd,
+                    os.path.basename(arguments.dump),
+                    os.path.abspath(arguments.dump),
+                    arguments.profiles_path,
+                    arguments.image,
+                    arguments.profile,
+                    output_dir,
+                    arguments.format,
+                    False,
+                    lock,
+                    arguments.host_path,
+                    getattr(arguments, "debug", False)
+                )
+        else:
+            for cmd in commands:
+                volatility3_instance.execute_command_volatility3(
+                    cmd,
+                    os.path.basename(arguments.dump),
+                    os.path.abspath(arguments.dump),
+                    arguments.symbols_path,
+                    arguments.image,
+                    os.path.abspath(arguments.cache_path),
+                    os.path.abspath(arguments.plugins_dir),
+                    output_dir,
+                    arguments.format,
+                    False,
+                    lock,
+                    arguments.host_path,
+                    getattr(arguments, "fetch_symbol", False),
+                    getattr(arguments, "debug", False),
+                    getattr(arguments, "custom_symbol", None),
+                    getattr(arguments, "scan_id", None)
+                )
 
     last_time = time.time()
     console.print(f"\n[bold yellow]⏱️  Time : {last_time - start_time:.2f} seconds for {len(commands)} modules.[/bold yellow]")

@@ -492,20 +492,37 @@ def upload_symbol():
 
 @app.route('/scan', methods=['POST'])
 def scan():
-    # Check for existing running/pending scans to prevent concurrency
+    # Check for system capacity before allowing new scans
+    # Allow multiple concurrent scans but limit based on system resources
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT uuid FROM scans WHERE status IN ('pending', 'running')")
-        existing_scan = c.fetchone()
+        
+        # Count current running/pending scans
+        c.execute("SELECT COUNT(*) FROM scans WHERE status IN ('pending', 'running')")
+        current_scans_count = c.fetchone()[0]
+        
+        # Get system CPU count to determine maximum concurrent scans
+        try:
+            max_concurrent_scans = os.cpu_count() or 4  # Default to 4 if cpu_count fails
+            # Be conservative: allow max 2 scans per CPU core to avoid system overload
+            max_allowed_scans = max(2, max_concurrent_scans // 2)
+        except:
+            max_allowed_scans = 4  # Default fallback
+        
         conn.close()
         
-        if existing_scan:
-            return jsonify({"error": "A scan is already in progress. Please wait for it to complete."}), 429
+        if current_scans_count >= max_allowed_scans:
+            return jsonify({
+                "error": f"System busy: {max_allowed_scans} maximum concurrent scans allowed. "
+                         f"Currently {current_scans_count} scans are running/pending. "
+                         "Please wait and try again later."
+            }), 429
+            
     except Exception as e:
-        print(f"[ERROR] Failed to check concurrency: {e}")
-        # Fail open or closed? Closed seems safer for stability.
-        return jsonify({"error": f"Database error checking concurrency: {e}"}), 500
+        print(f"[ERROR] Failed to check system capacity: {e}")
+        # Fail open to allow scans, but log the error
+        pass
 
     data = request.json
     
@@ -637,8 +654,10 @@ def scan():
             c.execute("UPDATE scans SET status = 'running' WHERE uuid = ?", (s_id,))
             conn.commit()
             
-            # Execute the runner
+            # Execute the runner with resource management
             if runner_func:
+                # Limit Docker resources for this scan to prevent system overload
+                # This is handled in the runner function through process limits
                 runner_func(args)
             
             # Process RecoverFs if present (Extract tarball)
@@ -659,6 +678,14 @@ def scan():
             c.execute("UPDATE scans SET status = 'failed', error = ? WHERE uuid = ?", (str(e), s_id))
             conn.commit()
         finally:
+            # Clean up Docker resources for this scan
+            try:
+                from docker_manager import get_docker_manager
+                docker_mgr = get_docker_manager()
+                docker_mgr.cleanup_scan_containers(s_id)
+            except Exception as cleanup_err:
+                print(f"[WARNING] Failed to cleanup Docker resources for scan {s_id}: {cleanup_err}")
+            
             conn.close()
 
     thread = threading.Thread(target=background_scan, args=(scan_id, args_obj))
@@ -1150,11 +1177,27 @@ def get_stats():
         for root, dirs, files in os.walk(symbols_path):
             total_symbols += len(files)
 
+    # Get Docker system status
+    docker_stats = {
+        "max_containers": 8,
+        "current_containers": 0,
+        "system_load": "unknown"
+    }
+    
+    try:
+        from docker_manager import get_docker_manager
+        docker_mgr = get_docker_manager()
+        docker_stats = docker_mgr.get_system_status()
+        docker_stats['system_load'] = "normal" if docker_stats['current_containers'] < docker_stats['max_concurrent_containers'] * 0.8 else "high"
+    except Exception as e:
+        print(f"[WARNING] Failed to get Docker stats: {e}")
+
     return jsonify({
         "total_cases": total_cases,
         "processing": running_cases,
         "total_evidences": total_evidences,
-        "total_symbols": total_symbols
+        "total_symbols": total_symbols,
+        "docker_stats": docker_stats
     })
 
 @app.route('/evidences', methods=['GET'])

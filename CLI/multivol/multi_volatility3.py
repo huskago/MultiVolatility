@@ -8,6 +8,10 @@ import uuid
 from rich import print as rprint
 import yaml
 import docker
+try:
+    from .docker_manager import get_docker_manager
+except ImportError:
+    from docker_manager import get_docker_manager
 
 class multi_volatility3:
     def __init__(self):
@@ -99,6 +103,12 @@ class multi_volatility3:
             print(f"[DEBUG] Docker Volumes: {json.dumps(volumes, indent=2)}", flush=True)
 
         try:
+            # Check if system can handle more containers
+            docker_mgr = get_docker_manager()
+            if not docker_mgr.can_launch_containers():
+                self.safe_print(f"[!] System busy: cannot launch more containers for {command}", lock)
+                return (command, False)
+
             # Sanitize command name for Docker container name
             # Use scan_id for predictable naming so API can track container status
             sanitized_name = re.sub(r'[^a-zA-Z0-9_.-]', '', command)
@@ -118,6 +128,16 @@ class multi_volatility3:
             except Exception as e:
                 self.safe_print(f"[!] Warning: Failed to cleanup existing container {container_name}: {e}", lock)
 
+            # Set resource limits for the container
+            # Use 50% of available CPU and limit memory to prevent system overload
+            try:
+                system_cpu_count = os.cpu_count() or 4
+                cpu_limit = max(0.5, min(2.0, system_cpu_count * 0.5))  # 0.5 to 2.0 CPUs
+                mem_limit = "2g"  # 2GB memory limit
+            except:
+                cpu_limit = 1.0
+                mem_limit = "1g"
+
             container = client.containers.run(
                 image=docker_image,
                 name=container_name,
@@ -126,9 +146,15 @@ class multi_volatility3:
                 tty=False,  # No TTY needed when redirecting to file
                 detach=True,
                 remove=False,
-                log_config={"type": "none"}  # Disable Docker logging - output goes to file
+                log_config={"type": "none"},  # Disable Docker logging - output goes to file
+                cpu_quota=int(cpu_limit * 100000),  # CPU quota in microseconds per 100ms
+                mem_limit=mem_limit
             )
             
+            # Register this container with the resource manager
+            if scan_id:
+                docker_mgr.register_scan_containers(scan_id, [container_name])
+
             # Wait for container to finish (output is written to file, not logs)
             wait_result = container.wait()
             exit_code = wait_result.get('StatusCode', 0)
