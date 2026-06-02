@@ -52,6 +52,10 @@ interface DashboardLayoutProps {
     onTabChange: (tab: string) => void;
     onLogout: () => void;
     apiStatus?: boolean;
+    dockerStats?: {
+        max_concurrent_containers?: number;
+        current_containers?: number;
+    };
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activeTab, onTabChange, onLogout, apiStatus = false }) => {
@@ -129,6 +133,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
                         <span className="truncate">{apiStatus ? 'API Online' : 'API Offline'}</span>
                     </div>
                 </div>
+
+                {/* Process Counter */}
+                {dockerStats && (
+                    <div className={`px-4 py-2 transition-all duration-300 ${open ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+                        <div className="flex items-center text-xs font-medium text-slate-500 bg-black/20 rounded-lg p-2 border border-white/5">
+                            <div className="w-2 h-2 rounded-full mr-2 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                            <span className="truncate">
+                                Processes: {dockerStats.current_containers || 0}/{dockerStats.max_concurrent_containers || 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 <div className="p-4 border-t border-white/5">
                     <button

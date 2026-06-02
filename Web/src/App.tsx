@@ -28,6 +28,10 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cases, setCases] = useState<Scan[]>([]);
   const [healthStatus, setHealthStatus] = useState(false);
+  const [dockerStats, setDockerStats] = useState<{
+    max_concurrent_containers?: number;
+    current_containers?: number;
+  }>({});
   const seenModulesRef = useRef<Record<string, Set<string>>>({});
 
   // ...
@@ -50,6 +54,19 @@ function App() {
       if (isHealthy) {
         const data = await api.getScans();
         setCases(data);
+
+        // Fetch docker stats
+        try {
+          const statsData = await api.getStats();
+          if (statsData.docker_stats) {
+            setDockerStats({
+              max_concurrent_containers: statsData.docker_stats.max_concurrent_containers,
+              current_containers: statsData.docker_stats.current_containers
+            });
+          }
+        } catch (e) {
+          console.error("Failed to fetch docker stats", e);
+        }
 
         // Check for new modules in running scans
         const runningScans = data.filter(c => c.status === 'running');
@@ -180,6 +197,7 @@ function App() {
               onTabChange={handleTabChange}
               onLogout={handleLogout}
               apiStatus={healthStatus}
+              dockerStats={dockerStats}
             >
               <Routes>
                 <Route path="dashboard" element={<Dashboard onCaseClick={handleCaseClick} cases={cases} onNavigate={handleTabChange} />} />
