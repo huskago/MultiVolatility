@@ -140,7 +140,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
                         <div className="flex items-center text-xs font-medium text-slate-500 bg-black/20 rounded-lg p-2 border border-white/5">
                             <div className="w-2 h-2 rounded-full mr-2 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
                             <span className="truncate">
-                                Processes: {dockerStats.current_containers || 0}/{dockerStats.max_concurrent_containers || 'N/A'}
+                                Processes: {dockerStats.current_containers || 0}/{dockerStats.max_concurrent_containers || 8}
                             </span>
                         </div>
                     </div>

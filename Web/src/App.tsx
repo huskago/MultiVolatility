@@ -58,14 +58,26 @@ function App() {
         // Fetch docker stats
         try {
           const statsData = await api.getStats();
+          console.log("API stats response:", statsData); // Debug log
           if (statsData.docker_stats) {
             setDockerStats({
-              max_concurrent_containers: statsData.docker_stats.max_concurrent_containers,
-              current_containers: statsData.docker_stats.current_containers
+              max_concurrent_containers: statsData.docker_stats.max_concurrent_containers || 8, // Default to 8 if undefined
+              current_containers: statsData.docker_stats.current_containers || 0
+            });
+          } else {
+            // Fallback if docker_stats is missing entirely
+            setDockerStats({
+              max_concurrent_containers: 8,
+              current_containers: 0
             });
           }
         } catch (e) {
           console.error("Failed to fetch docker stats", e);
+          // Set default values on error
+          setDockerStats({
+            max_concurrent_containers: 8,
+            current_containers: 0
+          });
         }
 
         // Check for new modules in running scans
