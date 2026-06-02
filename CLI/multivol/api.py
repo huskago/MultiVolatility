@@ -1179,7 +1179,7 @@ def get_stats():
 
     # Get Docker system status
     docker_stats = {
-        "max_containers": 8,
+        "max_concurrent_containers": 8,
         "current_containers": 0,
         "system_load": "unknown"
     }
